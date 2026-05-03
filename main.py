@@ -11,32 +11,40 @@ from thresholding import (
     apply_multilevel_threshold
 )
 
+from segmentation import (
+    kmeans_segmentation,
+    mean_shift_segmentation,
+    region_growing_segmentation,
+    agglomerative_segmentation
+)
+
 def process_image(image_path):
     print(f"Processing {image_path}...")
-    # Load image and convert to grayscale
-    img = Image.open(image_path).convert('L')
-    img_array = np.array(img)
+    
+    # --- PART A: Thresholding ---
+    img_gray_pil = Image.open(image_path).convert('L')
+    img_gray = np.array(img_gray_pil)
     
     # 1. Optimal Thresholding
-    t_opt = optimal_thresholding(img_array)
-    res_opt = apply_threshold(img_array, t_opt)
+    t_opt = optimal_thresholding(img_gray)
+    res_opt = apply_threshold(img_gray, t_opt)
     
     # 2. Otsu Thresholding
-    t_otsu = otsu_thresholding(img_array)
-    res_otsu = apply_threshold(img_array, t_otsu)
+    t_otsu = otsu_thresholding(img_gray)
+    res_otsu = apply_threshold(img_gray, t_otsu)
     
-    # 3. Spectral Thresholding (3 modes / 2 thresholds)
-    t_spectral = spectral_thresholding(img_array, num_thresholds=2)
-    res_spectral = apply_multilevel_threshold(img_array, t_spectral)
+    # 3. Spectral Thresholding
+    t_spectral = spectral_thresholding(img_gray, num_thresholds=2)
+    res_spectral = apply_multilevel_threshold(img_gray, t_spectral)
     
     # 4. Local Thresholding
-    res_local = local_thresholding(img_array, block_size=35, offset=10)
+    res_local = local_thresholding(img_gray, block_size=35, offset=10)
     
-    # Visualization
+    # Visualization Part A
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
     fig.suptitle(f"Thresholding Results - {os.path.basename(image_path)}", fontsize=16)
     
-    axes[0, 0].imshow(img_array, cmap='gray')
+    axes[0, 0].imshow(img_gray, cmap='gray')
     axes[0, 0].set_title("Original Grayscale")
     
     axes[0, 1].imshow(res_opt, cmap='gray')
@@ -51,13 +59,56 @@ def process_image(image_path):
     axes[1, 1].imshow(res_local, cmap='gray')
     axes[1, 1].set_title("Local Thresholding")
     
-    axes[1, 2].axis('off') # Placeholder
+    axes[1, 2].axis('off')
     
     plt.tight_layout()
-    output_name = f"result_{os.path.basename(image_path)}"
-    plt.savefig(output_name)
-    print(f"Saved results to {output_name}")
-    # plt.show()
+    output_name_a = f"result_thresholding_{os.path.basename(image_path)}"
+    plt.savefig(output_name_a)
+    print(f"Saved thresholding results to {output_name_a}")
+    plt.close()
+
+    # --- PART B: Segmentation ---
+    img_color_pil = Image.open(image_path).convert('RGB')
+    img_color = np.array(img_color_pil)
+    
+    print(f"  -> Running K-Means...")
+    res_kmeans = kmeans_segmentation(img_color, n_clusters=4)
+    
+    print(f"  -> Running Mean Shift...")
+    res_meanshift = mean_shift_segmentation(img_color, spatial_radius=20, color_radius=40)
+    
+    print(f"  -> Running Region Growing...")
+    res_region = region_growing_segmentation(img_color, threshold=30)
+    
+    print(f"  -> Running Agglomerative...")
+    res_agglo = agglomerative_segmentation(img_color, n_clusters=4)
+    
+    # Visualization Part B
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    fig.suptitle(f"Segmentation Results - {os.path.basename(image_path)}", fontsize=16)
+    
+    axes[0, 0].imshow(img_color)
+    axes[0, 0].set_title("Original Color")
+    
+    axes[0, 1].imshow(res_kmeans)
+    axes[0, 1].set_title("K-Means (K=4)")
+    
+    axes[0, 2].imshow(res_meanshift)
+    axes[0, 2].set_title("Mean Shift")
+    
+    axes[1, 0].imshow(res_region)
+    axes[1, 0].set_title("Region Growing")
+    
+    axes[1, 1].imshow(res_agglo)
+    axes[1, 1].set_title("Agglomerative (K=4)")
+    
+    axes[1, 2].axis('off')
+    
+    plt.tight_layout()
+    output_name_b = f"result_segmentation_{os.path.basename(image_path)}"
+    plt.savefig(output_name_b)
+    print(f"Saved segmentation results to {output_name_b}")
+    plt.close()
 
 if __name__ == "__main__":
     image_dir = "images"
